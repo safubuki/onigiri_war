@@ -43,17 +43,19 @@ class KameNigiriBot():
         self.mode = ActMode.START   # mode ：開始
         self.state = RunState.VART  # Run状態(Runのサブ状態)：縦
         self.pi_val = math.pi
-        # Odometry情報 x積算値
-        self.odom_x_sum = 0
+        # Odometry情報
+        self.odom_pos_x = 0
+        self.odom_ori_z = 0
+        # Odometry しきい値
+        self.odom_pos_x_thresh = 0
+        self.odom_ori_z_thresh = 0
         # # 超音波センサ検知 (超音波センサ 使うとき有効)
         # self.us_left_detect = False
         # self.us_right_detect = False
-
         # # スタート/ゴール座標
         # self.c_data          = []  # csvデータ
         # self.start_pos       = []  # スタート地点 ：pos_x,pos_y,ori_z,ori_w  リスト型
         # self.goal_pos        = []  # ゴール地点   ：pos_x,pos_y,ori_z,ori_w  リスト型
-
         ### Publisher を ROS Masterに登録
         # Velocity
         self.vel_pub = rospy.Publisher('cmd_vel', Twist,queue_size=1)
@@ -103,8 +105,9 @@ class KameNigiriBot():
 
     ### Odometry情報Topic Subscribe時のCallback関数
     def odom_callback(self, odom_val):
-        self.odom_x_sum += odom_val.twist.twist.linear.x
-        print('odom_x_sum = ',self.odom_x_sum)
+        # Odometry情報を保存する
+        self.odom_pos_x = odom_val.pose.pose.position.x
+        self.odom_ori_z = odom_val.pose.pose.orientation.z
 
     ### cmd_vel パラメータ設定＆Topic Publish関数
     def vel_ctrl(self, line_x, line_y, ang_z):
@@ -116,75 +119,62 @@ class KameNigiriBot():
 
     ### ロボット動作のメイン処理
     def strategy(self):
+        # 起動直後ウェイト
+        rospy.sleep(1.0)  # 起動後、ウェイト（調整値）
         while not rospy.is_shutdown():
-            if self.mode == ActMode.START:      # STARTモード  ：起動直後の角度設定
-                print('mode = START')
-                # 起動後、ウェイト（調整値）
-                rospy.sleep(1.0)
-                # Velocity設定＆コマンド送信
-                angular = self.pi_val / 4               # 左約45度
-                print(angular)
-                self.vel_ctrl(0.00, 0.00, angular)      # 旋回
-                rospy.sleep(1.1)
-                self.vel_ctrl(0.00, 0.00, 0.00)         # 停止
-                # 動作モードを変更
-                self.mode = ActMode.RUN
-            elif self.mode == ActMode.RUN:      # RUNモード  ：ひたすら前進
-                print('mode = RUN')
-                # Run状態に応じて処理を変える （★★ ここで微調整）
-                if self.state == RunState.VART:
-                    odom_x_sum_thresh = 27
-                else:
-                    odom_x_sum_thresh = 20
-
-                # Odometry情報のX方向積算値が一定を超えたらモード変更
-                if self.odom_x_sum >= odom_x_sum_thresh:
-                    self.vel_ctrl(0.00, 0.00, 0.00)  # 停止
-                    # 動作モードを変更
-                    self.mode = ActMode.TURN
-                elif self.odom_x_sum >= 15:
-                    self.vel_ctrl(0.25, 0.00, 0.00)  # 低速
-                else:
-                    self.vel_ctrl(1.00, 0.00, 0.00)  # 1.00m/sで前進
-
-                # # 前進中に障害物検知で停止、未検知ならそのまま進む(超音波センサ 使うとき有効)
-                # if self.us_left_detect == True and self.us_right_detect == True:
-                #     self.vel_ctrl(0.00, 0.00, 0.00)     # 停止
-                #     # 動作モードを変更
-                #     self.mode = ActMode.CORNER
-                # else:
-                #     self.vel_ctrl(0.50, 0.00, 0.00)     # 0.50m/sで前進
-                # # (超音波センサ 使うとき有効)
-
-            elif self.mode == ActMode.TURN:   # CORNERモード ：かどで旋回する
-                # 旋回する
-                print('mode = TURN')
-                angular = -(self.pi_val / 2)            # 右約90度
-                print(angular)
-                self.vel_ctrl(0.00, 0.00, angular)      # 旋回
-                rospy.sleep(1.1)
-                self.vel_ctrl(0.00, 0.00, 0.00)         # 停止
-                # 積算値をクリア
-                self.odom_x_sum = 0
-
-                # 動作モード、Run状態を設定すrう
-                if self.state == RunState.VART:
-                    # Run状態変更
-                    self.state = RunState.HORI
-                    # 動作モードを変更
+            if self.mode == ActMode.START:          # STARTモード  ：起動後の角度設定
+                # print('mode = START')
+                self.odom_pos_x_thresh = 0.00
+                self.odom_ori_z_thresh = 0.34
+                # print('odom_ori_z', self.odom_ori_z)
+                if self.odom_ori_z >= self.odom_ori_z_thresh:
+                    self.vel_ctrl(0.00, 0.00, 0.00)
+                    self.odom_pos_x_thresh = 2.00
+                    self.odom_ori_z_thresh = 0.00
                     self.mode = ActMode.RUN
                 else:
-                    # 動作モードを変更
-                    self.mode = ActMode.IPPON
-
+                    self.vel_ctrl(0.00, 0.00, 0.30)
+            elif self.mode == ActMode.RUN:          # RUNモード  ：前進
+                # print('odom_pos_x', self.odom_pos_x)
+                if self.odom_pos_x >= self.odom_pos_x_thresh:
+                    self.vel_ctrl(0.00, 0.00, 0.00)
+                    if self.state == RunState.VART:  # 縦方向移動時
+                        self.odom_pos_x_thresh =  0.00
+                        self.odom_ori_z_thresh = -0.36
+                        self.mode = ActMode.TURN
+                    else:  # 横方向移動時
+                        self.odom_pos_x_thresh =  0.00
+                        self.odom_ori_z_thresh = -0.95
+                        self.mode = ActMode.IPPON
+                else:
+                    # self.vel_ctrl(0.25, 0.00, 0.00)
+                    self.vel_ctrl(0.30, 0.00, 0.00)
+            elif self.mode == ActMode.TURN:     # TURNモード ：かどで旋回する
+                # print('odom_ori_z', self.odom_ori_z)
+                if self.odom_ori_z <= self.odom_ori_z_thresh:
+                    self.vel_ctrl(0.00, 0.00, 0.00)
+                    # 動作モード、Run状態を設定する
+                    if self.state == RunState.VART:
+                        self.odom_pos_x_thresh = 3.90
+                        self.odom_ori_z_thresh = 0.00
+                        self.state = RunState.HORI
+                        self.mode = ActMode.RUN
+                    else:
+                        pass
+                        # # 動作モードを変更
+                        # self.mode = ActMode.IPPON
+                else:
+                    self.vel_ctrl(0.00, 0.00, -0.30)
             elif self.mode == ActMode.IPPON:     # IPPONモード ：塩おにぎりから一本取る
-                print('mode = IPPON')
-                self.vel_ctrl(0.00, 0.00, 0.00)         # 停止
-                # ★★時間あれば、首振りなどして、一本取りやすく
+                # print('mode = IPPON')
+                if self.odom_ori_z <= self.odom_ori_z_thresh:
+                    self.vel_ctrl(0.00, 0.00, 0.00)
+                else:
+                    self.vel_ctrl(0.00, 0.00, -1.50)       # 急速旋回
             else:
                 pass
-            # Loop時にSleepする
-            rospy.sleep(1.0)
+            # Loop時にSleepする(100msスリープ)
+            rospy.sleep(0.1)
 
 if __name__ == "__main__":
     rospy.init_node('kameNigiri_node')
