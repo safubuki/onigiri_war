@@ -1,3 +1,6 @@
+# チーム名
+STD2 Bチーム カメにぎり
+
 # onigiri_war
 OneNightROBOCON競技「onigiri war」プロジェクト
 
