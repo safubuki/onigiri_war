@@ -10,7 +10,7 @@
     <!--<node name="map_server" pkg="map_server" type="map_server" args="$(find kamenigiri_navi)/map/kame_map.yaml"/>-->
 
     <!-- AMCL -->
-    <arg name="custom_amcl_launch_file" default="$(find kamenigiri_navi)/amcl/includes/amcl.launch.xml"/>
+    <arg name="custom_amcl_launch_file" default="$(find kamenigiri_navi)/amcl/includes/amcl_blue.launch.xml"/>
     <arg name="initial_pose_x" default="0.0"/>
     <arg name="initial_pose_y" default="0.0"/>
     <arg name="initial_pose_a" default="0.0"/>
@@ -30,9 +30,9 @@
     <arg name="base_global_planner" default="navfn/NavfnROS"/>
     <arg name="base_local_planner" default="dwa_local_planner/DWAPlannerROS"/>
     <!-- <arg name="base_local_planner" default="base_local_planner/TrajectoryPlannerROS"/> -->
-    <arg name="cmd_vel_topic" default="red_bot/cmd_vel" />
-    <arg name="odom_topic" default="red_bot/odom" />
-    <arg name="laser_topic" default="red_bot/scan" />
+    <arg name="cmd_vel_topic" default="blue_bot/cmd_vel" />
+    <arg name="odom_topic" default="blue_bot/odom" />
+    <arg name="laser_topic" default="blue_bot/scan" />
 
     <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen">
 
@@ -41,16 +41,16 @@
         <rosparam file="$(find kamenigiri_navi)/move_base/param/planner.yaml" command="load"/>
 
         <!-- observation sources located in costmap_common.yaml -->
-        <rosparam file="$(find kamenigiri_navi)/move_base/param/costmap_common.yaml" command="load" ns="global_costmap" />
-        <rosparam file="$(find kamenigiri_navi)/move_base/param/costmap_common.yaml" command="load" ns="local_costmap" />
+        <rosparam file="$(find kamenigiri_navi)/move_base/param/costmap_common_blue.yaml" command="load" ns="global_costmap" />
+        <rosparam file="$(find kamenigiri_navi)/move_base/param/costmap_common_blue.yaml" command="load" ns="local_costmap" />
 
         <!-- local costmap, needs size -->
-        <rosparam file="$(find kamenigiri_navi)/move_base/param/costmap_local.yaml" command="load" ns="local_costmap" />
+        <rosparam file="$(find kamenigiri_navi)/move_base/param/costmap_local_blue.yaml" command="load" ns="local_costmap" />
         <param name="local_costmap/width" value="10.0"/>
         <param name="local_costmap/height" value="10.0"/>
 
         <!-- global costmap with laser, for odom_navigation_demo -->
-        <rosparam file="$(find kamenigiri_navi)/move_base/param/costmap_global.yaml" command="load" ns="global_costmap"/>
+        <rosparam file="$(find kamenigiri_navi)/move_base/param/costmap_global_blue.yaml" command="load" ns="global_costmap"/>
         <param name="global_costmap/width" value="100.0"/>
         <param name="global_costmap/height" value="100.0"/>
 
@@ -62,7 +62,7 @@
     <!-- rtimulib           (Unnecessary :not use) -->
 
     <!-- robot_pose_ekf -->
-    <arg name="output_frame"   default="red_bot/odom"/>
+    <arg name="output_frame"   default="blue_bot/odom"/>
     <node pkg="robot_pose_ekf" type="robot_pose_ekf" name="robot_pose_ekf">
         <param name="output_frame" value="odom"/>
         <param name="freq" value="30.0"/>
@@ -73,12 +73,12 @@
         <param name="debug" value="false"/>
         <param name="self_diagnose" value="false"/>
 
-        <remap from="imu_data" to="red_bot/imu" />
-        <remap from="odom" to="red_bot/odom" />
+        <remap from="imu_data" to="blue_bot/imu" />
+        <remap from="odom" to="blue_bot/odom" />
     </node>
 
     <!-- kameNigiri_evolution (my source code) -->
-    <node pkg="onigiri_war" type="kameNigiri_evolution.py" name="kameNigiri" output="screen"/>
+    <node pkg="onigiri_war" type="kameNigiri_evolution_blue.py" name="kameNigiri" output="screen"/>
 
     <!-- End of your space  -->
 </launch>

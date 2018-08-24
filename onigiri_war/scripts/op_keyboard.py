@@ -8,7 +8,7 @@ import rospy
 from geometry_msgs.msg import Twist
 
 import sys, select, termios, tty
-from abstractRulo import *
+# from abstractRulo import *
 
 msg = """
 Reading from the keyboard  and Publishing to Twist!
@@ -61,10 +61,13 @@ speedBindings={
 		'c':(1,.9),
 	      }
 
-class OpKey(AbstractRulo):
+class OpKey():
+# class OpKey(AbstractRulo):
 	
 	def __init__(self, bot_name):
-		AbstractRulo.__init__(self, bot_name)
+        	# bot name
+        	self.name = bot_name
+		# AbstractRulo.__init__(self, bot_name)
 		
 	def getKey(self):
 		tty.setraw(sys.stdin.fileno())

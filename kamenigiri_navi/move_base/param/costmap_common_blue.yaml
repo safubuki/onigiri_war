@@ -1,0 +1,25 @@
+max_obstacle_height: 0.60
+robot_radius: 0.20
+
+robot_base_frame: blue_bot/base_link
+
+update_frequency: 2.0
+publish_frequency: 1.0
+transform_tolerance: 0.5
+
+resolution: 0.05
+
+obstacle_range: 2.5
+raytrace_range: 3.0
+
+#layer definitions
+static:
+    map_topic: /map
+    subscribe_to_updates: true
+
+obstacles_laser:
+    observation_sources: blue_bot/scan
+    blue_bot/scan: {data_type: LaserScan, clearing: true, marking: true, topic: blue_bot/scan, inf_is_valid: true}
+
+inflation:
+    inflation_radius: 0.15
